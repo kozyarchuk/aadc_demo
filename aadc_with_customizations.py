@@ -1,11 +1,7 @@
 # import QuantLib as ql
 import aadc
 import aadc.quantlib as ql
-import pickle
 import time
-import sys
-from memusage import get_memory_usage
-import zipfile
 import random
 print(ql.__version__)
 import numpy as np
@@ -120,4 +116,5 @@ def do_it():
     price_portfolio_aadc( kernel, request, curve_args, result_template)
     pprint(result_template)
 
-do_it()
+if __name__ == "__main__":
+    do_it()
