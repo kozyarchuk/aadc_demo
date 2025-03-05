@@ -60,6 +60,7 @@ def build_portfolio(params):
             swaps.append( (curve, curve.create_swap(fixed_rate=random.uniform(0.005, 0.05), period= random.choice(tenors) ) ) )
     return  swaps, curves
 
+
 def price_portfolio(swaps, curves, curve_rates, results):
     for curve, rates in zip(curves, curve_rates):
         for quote, rate in zip(curve.quotes, rates):
@@ -83,20 +84,20 @@ def record_kernel(swaps, curves):
     price_portfolio(swaps, curves, curve_rates, results)
     reqest = {}
     result_template = {}
+    pprint(results)
     for ccy, ccy_npv in results.items():
         ccy_npv_res = ccy_npv.mark_as_output()
         result_template[ ccy ] = ccy_npv_res
         reqest[ ccy_npv_res ] = []
     kernel.stop_recording()
-    kernel.print_passive_extract_locations()
 
     return (kernel, reqest, result_template, curve_args)
 
-def price_portfolio_aadc(kernel, request, curve_args, result_template):
+def price_portfolio_aadc(kernel, request, curve_args, curve_rates, result_template):
     inputs = {}
-    for curve_arg in curve_args:
-        for arg_point in curve_arg:
-            inputs[arg_point] = 0.0025 + 0.005 * 0.02 * random.randint(0, 99)
+    for curve_arg, rates in zip(curve_args, curve_rates):
+        for arg_point, rate in zip( curve_arg, rates ):
+            inputs[arg_point] = rate
     start = time.time()
 
     r = aadc.evaluate(kernel, request, inputs, aadc.ThreadPool(1))
@@ -109,11 +110,26 @@ def do_it():
     params = [(SofrCurve, trade_count), (EstrCurve, trade_count), (SoniaCurve, trade_count)]
     swaps, curves = build_portfolio(params)
 
+    curve_rates = []
+    for curve in curves:
+        rates = []
+        for _ in curve.tenors:
+            rates.append( 0.0025 + 0.005 * 0.02 * random.randint(0, 99))
+        curve_rates.append(rates)
+
+
+    result_template = defaultdict(lambda: aadc.idouble(0.0))
     start  = time.time()
+    # price_portfolio(swaps, curves, curve_rates, result_template)
+    pprint(result_template)
+    print("Price time: ", time.time() - start)
+
+    start  = time.time()
+    result_template = defaultdict(lambda: aadc.idouble(0.0))
     kernel, request, result_template, curve_args = record_kernel(swaps, curves)
     print("Recording time: ", time.time() - start)
 
-    price_portfolio_aadc( kernel, request, curve_args, result_template)
+    price_portfolio_aadc( kernel, request, curve_args, curve_rates, result_template)
     pprint(result_template)
 
 if __name__ == "__main__":
